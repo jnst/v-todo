@@ -1,0 +1,20 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# プロジェクト構造ガイド
+
+このプロジェクトはVueを使ったTodoアプリケーションで、GSAPアニメーションを活用しています。
+
+## 主要ディレクトリ構造
+
+- `app/` - アプリケーションのメインコード
+  - `components/` - Vueコンポーネント
+  - `pages/` - アプリケーションのページコンポーネント
+- `public/` - 静的ファイル
+- `doc/` - ドキュメント（[TODO.md](mdc:doc/TODO.md)を含む）
+
+## 実装予定機能
+
+実装予定機能の詳細リストは[TODO.md](mdc:doc/TODO.md)に記載されています。

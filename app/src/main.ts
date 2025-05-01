@@ -18,6 +18,92 @@ let todos: TodoItem[] = [];
 let nextId = 1;
 let sortableInstance: Sortable | null = null;
 
+// ローカルストレージのキー
+const STORAGE_KEY = 'gsap-todo-app';
+const ID_COUNTER_KEY = 'gsap-todo-app-id-counter';
+
+// ローカルストレージからデータを読み込む
+const loadFromLocalStorage = (): void => {
+  try {
+    const storedTodos = localStorage.getItem(STORAGE_KEY);
+    const storedIdCounter = localStorage.getItem(ID_COUNTER_KEY);
+
+    if (storedTodos) {
+      todos = JSON.parse(storedTodos);
+      showSaveIndicator('読み込み完了', 'success');
+    }
+
+    if (storedIdCounter) {
+      nextId = parseInt(storedIdCounter, 10);
+    }
+  } catch (error) {
+    console.error('ローカルストレージからの読み込みに失敗しました:', error);
+    showSaveIndicator('読み込みエラー', 'error');
+  }
+};
+
+// ローカルストレージにデータを保存
+const saveToLocalStorage = (): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+    localStorage.setItem(ID_COUNTER_KEY, nextId.toString());
+    showSaveIndicator('保存完了', 'success');
+  } catch (error) {
+    console.error('ローカルストレージへの保存に失敗しました:', error);
+    showSaveIndicator('保存エラー', 'error');
+  }
+};
+
+// 保存インジケーターの表示
+const showSaveIndicator = (message: string, type: 'success' | 'error'): void => {
+  // 既存のインジケーターがあれば削除
+  const existingIndicator = document.querySelector('.save-indicator');
+  if (existingIndicator) {
+    existingIndicator.remove();
+  }
+
+  // インジケーター要素の作成
+  const indicator = document.createElement('div');
+  indicator.className = `save-indicator ${type}`;
+  indicator.textContent = message;
+
+  // CSSクラスに基づいたスタイル
+  if (type === 'success') {
+    indicator.style.backgroundColor = 'rgba(40, 167, 69, 0.9)';
+  } else {
+    indicator.style.backgroundColor = 'rgba(220, 53, 69, 0.9)';
+  }
+
+  document.body.appendChild(indicator);
+
+  // アニメーション
+  const tl = gsap.timeline();
+
+  // 初期状態を設定
+  gsap.set(indicator, {
+    y: -50,
+    opacity: 0
+  });
+
+  // アニメーションシーケンス
+  tl.to(indicator, {
+    y: 20,
+    opacity: 1,
+    duration: 0.5,
+    ease: 'back.out(1.7)'
+  })
+  .to(indicator, {
+    opacity: 0,
+    y: -50,
+    duration: 0.5,
+    delay: 1.5,
+    ease: 'power2.in',
+    onComplete: () => {
+      indicator.remove();
+    }
+  });
+};
+
 // DOM要素を初期化
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -31,6 +117,11 @@ app.innerHTML = `
       <button class="add-btn">追加</button>
     </div>
 
+    <div class="data-controls">
+      <button class="save-btn">保存</button>
+      <button class="clear-btn">全削除</button>
+    </div>
+
     <div class="todo-list"></div>
   </div>
 `;
@@ -39,6 +130,8 @@ app.innerHTML = `
 const todoInput = document.querySelector<HTMLInputElement>('.todo-input')!;
 const addButton = document.querySelector<HTMLButtonElement>('.add-btn')!;
 const todoList = document.querySelector<HTMLDivElement>('.todo-list')!;
+const saveButton = document.querySelector<HTMLButtonElement>('.save-btn')!;
+const clearButton = document.querySelector<HTMLButtonElement>('.clear-btn')!;
 
 // 初期アニメーション
 const initAnimation = () => {
@@ -194,6 +287,40 @@ const updateTodosOrder = () => {
   });
 
   todos = newTodos;
+
+  // 順序変更後にローカルストレージに保存
+  saveToLocalStorage();
+};
+
+// TODOリストの全削除
+const clearAllTodos = () => {
+  // 削除確認
+  if (!window.confirm('すべてのTODOを削除しますか？')) {
+    return;
+  }
+
+  // 削除アニメーション
+  const todoItems = gsap.utils.toArray('.todo-item') as HTMLElement[];
+  const tl = gsap.timeline({
+    onComplete: () => {
+      todos = [];
+      todoList.innerHTML = '';
+      saveToLocalStorage();
+      updateScrollAnimation();
+      initSortable();
+    }
+  });
+
+  // 順番にアニメーション
+  todoItems.forEach((item, index) => {
+    tl.to(item, {
+      x: index % 2 === 0 ? '100vw' : '-100vw',
+      opacity: 0,
+      rotation: index % 2 === 0 ? 10 : -10,
+      duration: 0.3,
+      ease: 'back.in(1.5)'
+    }, index * 0.1);
+  });
 };
 
 // TODOアイテムの追加
@@ -222,6 +349,9 @@ const addTodo = () => {
     repeat: 1
   });
 
+  // データ保存
+  saveToLocalStorage();
+
   // Sortableの更新
   setTimeout(() => {
     initSortable();
@@ -248,6 +378,10 @@ const deleteTodo = (id: number) => {
       todos = todos.filter(todo => todo.id !== id);
       todoElement.remove();
       updateScrollAnimation();
+
+      // 削除後にローカルストレージに保存
+      saveToLocalStorage();
+
       // Sortableの更新
       initSortable();
     }
@@ -339,6 +473,9 @@ const toggleComplete = (id: number) => {
       );
     }
   }
+
+  // 状態変更後にローカルストレージに保存
+  saveToLocalStorage();
 };
 
 // TODOアイテムのレンダリング
@@ -446,6 +583,21 @@ const updateScrollAnimation = () => {
   });
 };
 
+// すべてのTODOをレンダリング
+const renderAllTodos = () => {
+  // 既存のTODOリストをクリア
+  todoList.innerHTML = '';
+
+  // すべてのTODOをレンダリング
+  todos.forEach(todo => {
+    renderTodo(todo);
+  });
+
+  // スクロールアニメーションとソータブルを更新
+  updateScrollAnimation();
+  initSortable();
+};
+
 // イベントリスナーの設定
 addButton.addEventListener('click', addTodo);
 todoInput.addEventListener('keypress', (e) => {
@@ -453,6 +605,26 @@ todoInput.addEventListener('keypress', (e) => {
     addTodo();
   }
 });
+
+// 保存ボタンのイベント
+saveButton.addEventListener('click', () => {
+  saveToLocalStorage();
+
+  // 保存ボタンのアニメーション
+  gsap.to(saveButton, {
+    scale: 0.95,
+    duration: 0.1,
+    onComplete: () => {
+      gsap.to(saveButton, {
+        scale: 1,
+        duration: 0.1
+      });
+    }
+  });
+});
+
+// 全削除ボタンのイベント
+clearButton.addEventListener('click', clearAllTodos);
 
 // 追加ボタンのクリックアニメーション
 addButton.addEventListener('click', (e) => {
@@ -510,13 +682,22 @@ const addDummyTodos = () => {
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {
   initAnimation();
+
+  // ローカルストレージからデータを読み込み
+  loadFromLocalStorage();
+
+  // 保存されたTODOがあればレンダリング
+  if (todos.length > 0) {
+    renderAllTodos();
+  } else {
+    // テスト用ダミーデータを追加
+    // addDummyTodos();
+
+    // GSAPの改善TODO項目を追加
+    addGSAPTodos();
+  }
+
   todoInput.focus();
-
-  // テスト用ダミーデータ（コメントアウトすることでテストデータ表示を止められます）
-  // addDummyTodos();
-
-  // GSAPの改善TODO項目を追加
-  addGSAPTodos();
 
   // 初期データが追加された後にSortableを初期化
   setTimeout(() => {
