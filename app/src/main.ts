@@ -1,6 +1,7 @@
 import './style.css'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import Sortable from 'sortablejs'
 
 // GSAPプラグインの登録
 gsap.registerPlugin(ScrollTrigger);
@@ -15,6 +16,7 @@ interface TodoItem {
 // TODOリストの状態
 let todos: TodoItem[] = [];
 let nextId = 1;
+let sortableInstance: Sortable | null = null;
 
 // DOM要素を初期化
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -103,6 +105,97 @@ const getRandomEffect = () => {
   return effects[Math.floor(Math.random() * effects.length)];
 };
 
+// ドラッグ＆ドロップの初期化
+const initSortable = () => {
+  // 既存のインスタンスがあれば破棄
+  if (sortableInstance) {
+    sortableInstance.destroy();
+  }
+
+  // Sortableの初期化
+  sortableInstance = new Sortable(todoList, {
+    animation: 150,
+    ghostClass: 'todo-item-ghost',
+    chosenClass: 'todo-item-chosen',
+    dragClass: 'todo-item-drag',
+    // ドラッグ開始時
+    onStart: (evt) => {
+      const item = evt.item;
+      // つかむエフェクト
+      gsap.to(item, {
+        scale: 1.05,
+        boxShadow: '0 10px 20px rgba(0, 0, 0, 0.2)',
+        background: 'rgba(100, 108, 255, 0.2)',
+        duration: 0.2,
+        zIndex: 100
+      });
+    },
+    // ドラッグ終了時
+    onEnd: (evt) => {
+      const item = evt.item;
+      // 元に戻すアニメーション
+      gsap.to(item, {
+        scale: 1,
+        boxShadow: '0 0 0 rgba(0, 0, 0, 0)',
+        background: '',
+        duration: 0.3,
+        zIndex: 1,
+        ease: 'elastic.out(1, 0.5)',
+        onComplete: () => {
+          // 順序を更新
+          updateTodosOrder();
+        }
+      });
+
+      // ドロップ時の特殊エフェクト
+      const ripple = document.createElement('div');
+      ripple.className = 'ripple-effect';
+      item.appendChild(ripple);
+
+      gsap.fromTo(ripple,
+        {
+          scale: 0,
+          opacity: 0.5,
+          backgroundColor: 'rgba(100, 108, 255, 0.3)'
+        },
+        {
+          scale: 3,
+          opacity: 0,
+          duration: 0.6,
+          onComplete: () => ripple.remove()
+        }
+      );
+    },
+    onChange: () => {
+      // 順序変更時に他のアイテムのアニメーション
+      const todoItems = todoList.querySelectorAll('.todo-item:not(.todo-item-chosen)');
+      todoItems.forEach((item) => {
+        gsap.to(item, {
+          y: 0,
+          duration: 0.2,
+          ease: 'power1.out'
+        });
+      });
+    }
+  });
+};
+
+// Todosの順序を更新
+const updateTodosOrder = () => {
+  const todoElements = todoList.querySelectorAll('.todo-item');
+  const newTodos: TodoItem[] = [];
+
+  todoElements.forEach((element) => {
+    const id = parseInt(element.getAttribute('data-id') || '0');
+    const todo = todos.find(t => t.id === id);
+    if (todo) {
+      newTodos.push(todo);
+    }
+  });
+
+  todos = newTodos;
+};
+
 // TODOアイテムの追加
 const addTodo = () => {
   const text = todoInput.value.trim();
@@ -128,6 +221,11 @@ const addTodo = () => {
     yoyo: true,
     repeat: 1
   });
+
+  // Sortableの更新
+  setTimeout(() => {
+    initSortable();
+  }, 500);
 };
 
 // TODOアイテムの削除
@@ -135,17 +233,39 @@ const deleteTodo = (id: number) => {
   const todoElement = document.querySelector(`.todo-item[data-id="${id}"]`);
   if (!todoElement) return;
 
-  // 削除アニメーション
-  gsap.to(todoElement, {
-    x: '100vw',
-    opacity: 0,
-    duration: 0.5,
-    ease: 'power2.in',
+  // 削除するアイテムのインデックスを取得して削除方向を決定
+  const todoItems = gsap.utils.toArray('.todo-item');
+  const index = todoItems.findIndex(item => item === todoElement);
+  const isEven = index % 2 === 0;
+
+  // 削除アニメーションのバリエーション
+  const direction = isEven ? '100vw' : '-100vw';
+  const rotation = isEven ? 10 : -10;
+
+  // タイムライン作成
+  const tl = gsap.timeline({
     onComplete: () => {
       todos = todos.filter(todo => todo.id !== id);
       todoElement.remove();
       updateScrollAnimation();
+      // Sortableの更新
+      initSortable();
     }
+  });
+
+  // 削除アニメーションのシーケンス
+  tl.to(todoElement, {
+    scale: 0.9,
+    opacity: 0.7,
+    duration: 0.2,
+    ease: 'power1.in'
+  })
+  .to(todoElement, {
+    x: direction,
+    rotation: rotation,
+    opacity: 0,
+    duration: 0.5,
+    ease: 'back.in(1.5)'
   });
 };
 
@@ -228,6 +348,7 @@ const renderTodo = (todo: TodoItem) => {
   todoElement.setAttribute('data-id', todo.id.toString());
 
   todoElement.innerHTML = `
+    <div class="drag-indicator"></div>
     <span class="todo-text ${todo.completed ? 'completed' : ''}">${todo.text}</span>
     <div class="todo-actions">
       <button class="complete-btn">✓</button>
@@ -249,16 +370,33 @@ const renderTodo = (todo: TodoItem) => {
 
   todoList.appendChild(todoElement);
 
-  // 追加アニメーション
-  gsap.fromTo(todoElement,
-    { x: '-100vw', opacity: 0 },
-    {
-      x: 0,
-      opacity: 1,
-      duration: 0.5,
-      ease: getRandomEffect(),
+  // 改善された追加アニメーション
+  const tl = gsap.timeline({
+    defaults: {
+      duration: 0.7,
+      ease: 'power2.out'
     }
-  );
+  });
+
+  // 初期状態を設定
+  gsap.set(todoElement, {
+    x: '-100%',
+    opacity: 0,
+    scale: 0.8
+  });
+
+  // 追加アニメーションのシーケンス
+  tl.to(todoElement, {
+    x: 0,
+    opacity: 0.5,
+    duration: 0.4
+  })
+  .to(todoElement, {
+    opacity: 1,
+    scale: 1,
+    duration: 0.3,
+    ease: 'elastic.out(1, 0.5)'
+  });
 
   // スクロールアニメーションの更新
   setTimeout(() => {
@@ -379,6 +517,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // GSAPの改善TODO項目を追加
   addGSAPTodos();
+
+  // 初期データが追加された後にSortableを初期化
+  setTimeout(() => {
+    initSortable();
+  }, 2500);
 });
 
 // GSAPの改善TODO項目を追加

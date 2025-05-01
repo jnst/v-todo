@@ -8,9 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@types/sortablejs':
+        specifier: ^1.15.8
+        version: 1.15.8
       gsap:
         specifier: ^3.13.0
         version: 3.13.0
+      sortablejs:
+        specifier: ^1.15.6
+        version: 1.15.6
     devDependencies:
       typescript:
         specifier: ~5.7.2
@@ -274,6 +280,9 @@ packages:
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
 
+  '@types/sortablejs@1.15.8':
+    resolution: {integrity: sha512-b79830lW+RZfwaztgs1aVPgbasJ8e7AXtZYHTELNXZPsERt4ymJdjV4OccDbHQAvHrCcFpbF78jkm0R6h/pZVg==}
+
   esbuild@0.25.3:
     resolution: {integrity: sha512-qKA6Pvai73+M2FtftpNKRxJ78GIjmFXFxd/1DVBqGo/qNhLSfv+G12n9pNoWdytJC8U00TrViOwpjT0zgqQS8Q==}
     engines: {node: '>=18'}
@@ -315,6 +324,9 @@ packages:
     resolution: {integrity: sha512-C5VvvgCCyfyotVITIAv+4efVytl5F7wt+/I2i9q9GZcEXW9BP52YYOXC58igUi+LFZVHukErIIqQSWwv/M3WRw==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
+
+  sortablejs@1.15.6:
+    resolution: {integrity: sha512-aNfiuwMEpfBM/CN6LY0ibyhxPfPbyFeBTYJKCvzkJ2GkUpazIt3H+QIPAMHwqQ7tMKaHz1Qj+rJJCqljnf4p3A==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -508,6 +520,8 @@ snapshots:
 
   '@types/estree@1.0.7': {}
 
+  '@types/sortablejs@1.15.8': {}
+
   esbuild@0.25.3:
     optionalDependencies:
       '@esbuild/aix-ppc64': 0.25.3
@@ -582,6 +596,8 @@ snapshots:
       '@rollup/rollup-win32-ia32-msvc': 4.40.1
       '@rollup/rollup-win32-x64-msvc': 4.40.1
       fsevents: 2.3.3
+
+  sortablejs@1.15.6: {}
 
   source-map-js@1.2.1: {}
 

@@ -109,12 +109,15 @@ h1 {
   justify-content: space-between;
   background-color: rgba(100, 108, 255, 0.1);
   border-radius: 8px;
-  padding: 1rem;
+  padding: 1rem 1rem 1rem 2rem;
   margin-bottom: 0.5rem;
   transition: background-color 0.3s, transform 0.3s;
   transform: translateX(-100vw); /* GSAPでアニメーション */
   position: relative;
   overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .todo-item::before {
@@ -145,6 +148,10 @@ h1 {
 
 .todo-item.deleted {
   transform: translateX(100vw); /* GSAPでアニメーション */
+}
+
+.todo-item:active {
+  cursor: grabbing;
 }
 
 .todo-text {
@@ -224,5 +231,69 @@ button.delete-btn {
   .todo-container {
     background-color: rgba(0, 0, 0, 0.02);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  }
+}
+
+/* ドラッグ＆ドロップ関連のスタイル */
+.todo-item-ghost {
+  opacity: 0.6;
+  background-color: rgba(100, 108, 255, 0.05);
+}
+
+.todo-item-chosen {
+  background-color: rgba(100, 108, 255, 0.2);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.todo-item-drag {
+  background-color: rgba(100, 108, 255, 0.25);
+}
+
+/* ドロップ時のリップルエフェクト */
+.ripple-effect {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ドラッグハンドルを追加 */
+.todo-item::after {
+  content: '⠿';
+  position: absolute;
+  left: 0.5rem;
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.todo-item:hover::after {
+  opacity: 0.7;
+}
+
+/* ドラッグインジケーター */
+.drag-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 4px;
+  background-color: #646cff;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.2s;
+}
+
+.todo-item:hover .drag-indicator {
+  transform: scaleY(1);
+}
+
+/* モバイル対応 */
+@media (max-width: 600px) {
+  .todo-item {
+    padding-left: 2rem;
   }
 }
